@@ -1,0 +1,55 @@
+on:
+  workflow_call:
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Install commitlint
+        run: npm install -D @commitlint/cli @commitlint/config-conventional
+
+      - name: Print versions
+        run: |
+          git --version
+          node --version
+          npm --version
+          npx commitlint --version
+
+      - name: Setup commitlint config
+        run: |
+          cat > commitlint.config.mjs << 'EOF'
+          export default {
+            extends: ['@commitlint/config-conventional'],
+            /*
+             * Override default config
+             * https://github.com/conventional-changelog/commitlint/blob/1644f1e8f74a844547e44e3e7a76fabbb96775f8/%40commitlint/config-conventional/src/index.ts
+             */
+            rules: {
+              'type-enum': [/* error */ 2, 'always', [
+                'build',
+                'chore',
+                'ci',
+                'docs',
+                'feat',
+                'fix',
+                'perf',
+                'refactor',
+                'revert',
+                'style',
+                'test',
+                'deps', // special use case: dependabot in combination with release-please
+              ]],
+            },
+          };
+          EOF
+
+      - name: Validate PR commits with commitlint
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
